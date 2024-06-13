@@ -23,14 +23,13 @@ gen.count <- 2
 
 gen.list <- replicate(100, build.gen(gen.count, fit.dist, off.dist), simplify = F)
 names(gen.list) <- paste0("pair",c(1:100))
-#save(gen.list, file = "final_project/run_051324/gen_list.RData")
+#save(gen.list, file = "runs/run_061224/gen_list.RData")
 
 #generate a range of possible starting population sizes (given transmission bottleneck)
 pop.counts <- round(rnorm(100, mean = 2, sd = 0.5))
 
 #generate starting viral populations (1 population per genotype)
 #each population starts as a homogeneous group (of p individuals) with the same genotype
-
 build.pop <- function(gen){
   geno <- list()
   p <- list()
@@ -45,7 +44,7 @@ build.pop <- function(gen){
   return(geno)
 }
 pop.list <- map(gen.list, build.pop)
-#save(pop.list, file = "final_project/run_051324/pop_list.RData")
+#save(pop.list, file = "runs/run_061224/pop_list.RData")
 
 #choose relative weights for each gene segment (should sum to 1)
 fit.vec <- c(0.3333333, 0.3333333, 0.3333333)
@@ -58,10 +57,10 @@ combo <- split(combo,1:nrow(combo))
 combo <- unlist(lapply(combo, paste0, collapse = ""))
 
 #for unit testing:
-load("final_project/run_051324/pop_list.RData")
-load("final_project/run_051324/gen_list.RData")
-pop <- pop.list[[1]]
-geno <- gen.list[[1]]
+#load("runs/run_051324/pop_list.RData")
+#load("runs/run_051324/gen_list.RData")
+#pop <- pop.list[[1]]
+#geno <- gen.list[[1]]
 
 #ITERATION
 #assign gene IDs to each individual
@@ -197,7 +196,7 @@ mix <- function(self, other, mixrate){ #combine self pool with other pool accord
 mixed.pools <- pmap(list(self.pools, other.pools, 0.3), mix)
 
 reassort <- function(mixed){
-  p <- sample(pop.counts,1)
+  p <- 200
   gen <- matrix(data = NA, nrow = 3, ncol = p)
   gen[1,] <- sample(mixed$a,p)
   gen[2,] <- sample(mixed$b,p)
@@ -242,9 +241,13 @@ iterate.fitness <- function(pops, generations, mu, cycles){
 }
 iterate.fitness <- cmpfun(iterate.fitness)
 
-generations <- 12
-cycles <- 50
+generations <- 10
+cycles <- 15
 
+#test <- iterate.fitness(pop.list[[1]], generations, mu = 0, cycles)
+
+
+#test populations
 mu.0 <- list()
 for(i in seq_along(pop.list)){
   geno <- gen.list[[i]]
@@ -252,10 +255,10 @@ for(i in seq_along(pop.list)){
 }
 names(mu.0) <- paste0("pair",c(1:100))
 mu.0 <- map(mu.0, cumsum)
-save(mu.0, file = "final_project/run_051324/mu_0.RData")
+save(mu.0, file = "runs/run_061224/mu_0_ABC.RData")
 
 mu.0.props <- map(mu.0, function(x) x/rowSums(x))
-save(mu.0.props, file = "final_project/run_051324/mu_0_props.RData")
+save(mu.0.props, file = "runs/run_061224/mu_0_props_ABC.RData")
 
 mu.01 <- list()
 for(i in seq_along(pop.list)){
@@ -264,22 +267,10 @@ for(i in seq_along(pop.list)){
 }
 names(mu.01) <- paste0("pair",c(1:100))
 mu.01 <- map(mu.01, cumsum)
-save(mu.01, file = "final_project/run_051324/mu_01.RData")
+save(mu.01, file = "runs/run_061224/mu_01_ABC.RData")
 
 mu.01.props <- map(mu.01, function(x) x/rowSums(x))
-save(mu.01.props, file = "final_project/run_051324/mu_01_props.RData")
-
-mu.03 <- list()
-for(i in seq_along(pop.list)){
-  geno <- gen.list[[i]]
-  mu.03[[i]] <- iterate.fitness(pop.list[[i]], generations, mu = 0.3, cycles)
-}
-names(mu.03) <- paste0("pair",c(1:100))
-mu.03 <- map(mu.03, cumsum)
-save(mu.03, file = "final_project/run_051324/mu_03.RData")
-
-mu.03.props <- map(mu.03, function(x) x/rowSums(x))
-save(mu.03.props, file = "final_project/run_051324/mu_03_props.RData")
+save(mu.01.props, file = "runs/run_061224/mu_01_props_ABC.RData")
 
 mu.05 <- list()
 for(i in seq_along(pop.list)){
@@ -288,22 +279,10 @@ for(i in seq_along(pop.list)){
 }
 names(mu.05) <- paste0("pair",c(1:100))
 mu.05 <- map(mu.05, cumsum)
-save(mu.05, file = "final_project/run_051324/mu_05.RData")
+save(mu.05, file = "runs/run_061224/mu_05_ABC.RData")
 
 mu.05.props <- map(mu.05, function(x) x/rowSums(x))
-save(mu.05.props, file = "final_project/run_051324/mu_05_props.RData")
-
-mu.07 <- list()
-for(i in seq_along(pop.list)){
-  geno <- gen.list[[i]]
-  mu.07[[i]] <- iterate.fitness(pop.list[[i]], generations, mu = 0.7, cycles)
-}
-names(mu.07) <- paste0("pair",c(1:100))
-mu.07 <- map(mu.07, cumsum)
-save(mu.07, file = "final_project/run_051324/mu_07.RData")
-
-mu.07.props <- map(mu.07, function(x) x/rowSums(x))
-save(mu.07.props, file = "final_project/run_051324/mu_07_props.RData")
+save(mu.05.props, file = "runs/run_061224/mu_05_props_ABC.RData")
 
 mu.09 <- list()
 for(i in seq_along(pop.list)){
@@ -312,10 +291,10 @@ for(i in seq_along(pop.list)){
 }
 names(mu.09) <- paste0("pair",c(1:100))
 mu.09 <- map(mu.09, cumsum)
-save(mu.09, file = "final_project/run_051324/mu_09.RData")
+save(mu.09, file = "runs/run_061224/mu_09_ABC.RData")
 
 mu.09.props <- map(mu.09, function(x) x/rowSums(x))
-save(mu.09.props, file = "final_project/run_051324/mu_09_props.RData")
+save(mu.09.props, file = "runs/run_061224/mu_09_props_ABC.RData")
 
 mu.1 <- list()
 for(i in seq_along(pop.list)){
@@ -324,10 +303,10 @@ for(i in seq_along(pop.list)){
 }
 names(mu.1) <- paste0("pair",c(1:100))
 mu.1 <- map(mu.1, cumsum)
-save(mu.1, file = "final_project/run_051324/mu_1.RData")
+save(mu.1, file = "runs/run_061224/mu_1_ABC.RData")
 
 mu.1.props <- map(mu.1, function(x) x/rowSums(x))
-save(mu.1.props, file = "final_project/run_051324/mu_1_props.RData")
+save(mu.1.props, file = "runs/run_061224/mu_1_props_ABC.RData")
 
 
 
@@ -365,7 +344,7 @@ for(i in seq_along(all.w)){
 }
 
 only.w <- map(all.w, slice, 4)
-#save(only.w, file = "final_project/run_051324/only_w.RData")
+#save(only.w, file = "runs/run_061224/only_w.RData")
 
 #calculate mean w:
 mean.w.calc <- function(w,counts){
@@ -379,19 +358,15 @@ mean.w.calc <- function(w,counts){
 }
 
 mu.0.means <- map2(only.w,mu.0,mean.w.calc)
-save(mu.0.means, file = "final_project/run_051324/mu_0_means.RData")
+save(mu.0.means, file = "runs/run_061224/mu_0_means_ABC.RData")
 mu.01.means <- map2(only.w,mu.01,mean.w.calc)
-save(mu.01.means, file = "final_project/run_051324/mu_01_means.RData")
-mu.03.means <- map2(only.w,mu.03,mean.w.calc)
-save(mu.03.means, file = "final_project/run_051324/mu_03_means.RData")
+save(mu.01.means, file = "runs/run_061224/mu_01_means_ABC.RData")
 mu.05.means <- map2(only.w,mu.05,mean.w.calc)
-save(mu.05.means, file = "final_project/run_051324/mu_05_means.RData")
-mu.07.means <- map2(only.w,mu.07,mean.w.calc)
-save(mu.07.means, file = "final_project/run_051324/mu_07_means.RData")
+save(mu.05.means, file = "runs/run_061224/mu_05_means_ABC.RData")
 mu.09.means <- map2(only.w,mu.09,mean.w.calc)
-save(mu.09.means, file = "final_project/run_051324/mu_09_means.RData")
+save(mu.09.means, file = "runs/run_061224/mu_09_means_ABC.RData")
 mu.1.means <- map2(only.w,mu.1,mean.w.calc)
-save(mu.1.means, file = "final_project/run_051324/mu_1_means.RData")
+save(mu.1.means, file = "runs/run_061224/mu_1_means_ABC.RData")
 
 
 
