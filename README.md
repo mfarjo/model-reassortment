@@ -24,6 +24,6 @@ run_043024:
 run_051324:
 - added genotype tracking
 
-run_061324
--removed tight bottlenecking from within-host replication
--test_sampling.R to find bottleneck size that minimizes drift
+run_061324:
+- removed tight bottlenecking from within-host replication
+- test_sampling.R to find bottleneck size that minimizes drift
