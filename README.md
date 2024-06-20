@@ -17,3 +17,13 @@ run_042524:
 - initial populations are now in pairs of 2
 - each simulation starts with a different pair of genotypes
 - added population size metrics
+
+run_043024:
+- added differential fitness weighting for gene segments
+
+run_051324:
+- added genotype tracking
+
+run_061324
+-removed tight bottlenecking from within-host replication
+-test_sampling.R to find bottleneck size that minimizes drift
