@@ -36,5 +36,11 @@ run_080224:
   -  segment activity
   -  total # of the segment in question
 
+run_091024:
+- relatedness is now a separate parameter (r), no longer depends on gene activity
+- each gene segment gets a relatedness value that exists on a spectrum from 0 -> 1
+   -  values are clustered based on patterns of H1N1 and H3N2 clade co-circulation
+- replication and genome packaging now occur non-simultaneously (packaging pulls from the final counts of replicated segments)
+
 
 
