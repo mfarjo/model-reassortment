@@ -27,3 +27,14 @@ run_051324:
 run_061324:
 - removed tight bottlenecking from within-host replication
 - test_sampling.R to find bottleneck size that minimizes drift
+
+run_080224:
+- now using gillespie stochastic simulations
+- replication is on a per-segment basis instead of a per-genotype basis
+- replication propensity takes into account:
+  -  likelihood of meeting a matched segment vs a mismatched segment
+  -  segment activity
+  -  total # of the segment in question
+
+
+
