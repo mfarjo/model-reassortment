@@ -1,136 +1,194 @@
 library(tidyverse)
 
-load("runs/run_080224/mu0.RData")
-load("runs/run_080224/mu01.RData")
-load("runs/run_080224/mu05.RData")
-load("runs/run_080224/mu09.RData")
-load("runs/run_080224/mu1.RData")
+#load replication statistics
+load("runs/run_091024/rep_stats_init1.RData")
+load("runs/run_091024/rep_stats_init5.RData")
 
+#final viable genome counts
+count.genomes.mu0 <- function(repx){
+  counts <- list()
+  viable <- list()
+  for(i in seq_along(repx)){
+    counts[[i]] <- repx[[i]][dim(repx[[i]])[1],]
+    viable[[i]] <- (min(counts[[i]]$A1, counts[[i]]$B1, counts[[i]]$C1))+
+      (min(counts[[i]]$A2, counts[[i]]$B2, counts[[i]]$C2))
+  }
+  return(viable)
+}
 
-#example trajectories
-mu0.test <- results.mu0[[1]][,c(1,8:15)]
-mu0.gather <- gather(mu0.test, key = "genotype", value = "count", -t)
+viable.mu0.init1 <- map(rep.stats.init1$mu0, count.genomes.mu0)
+viable.mu0.init5 <- map(rep.stats.init5$mu0, count.genomes.mu0)
 
-mu1.test <- results.mu1[[1]][,c(1,8:15)]
-mu1.gather <- gather(mu1.test, key = "genotype", value = "count", -t)
+count.genomes.muplus <- function(repx){
+  counts <- list()
+  viable <- list()
+  for(i in seq_along(repx)){
+    counts[[i]] <- repx[[i]][dim(repx[[i]])[1],]
+    viable[[i]] <- min((counts[[i]]$A1 + counts[[i]]$A2),
+                       (counts[[i]]$B1 + counts[[i]]$B2),
+                       (counts[[i]]$C1 + counts[[i]]$C2))
+  }
+  return(viable)
+}
 
-gen.cols <- RColorBrewer::brewer.pal(11,"RdBu")[c(1:4,8:11)]
-ggplot(data = mu0.gather, aes(x = t, y = count, color = genotype))+
-  geom_line()+
-  ylab("N")+
-  scale_color_manual(values = gen.cols)
-ggsave("runs/run_080224/figs/exampletraj_mu0.png")
-ggplot(data = mu1.gather, aes(x = t, y = count, color = genotype))+
-  geom_line()+
-  ylab("N")+
-  scale_color_manual(values = gen.cols)
-ggsave("runs/run_080224/figs/exampletraj_mu1.png")
+viable.mu01.init1 <- map(rep.stats.init1$mu01, count.genomes.muplus)
+viable.mu01.init5 <- map(rep.stats.init5$mu01, count.genomes.muplus)
 
-#final population sizes
-results.mu0 <- map(results.mu0, function(x) x[,c(1,8:15)])
-results.mu01 <- map(results.mu01, function(x) x[,c(1,8:15)])
-results.mu05 <- map(results.mu05, function(x) x[,c(1,8:15)])
-results.mu09 <- map(results.mu09, function(x) x[,c(1,8:15)])
-results.mu1 <- map(results.mu1, function(x) x[,c(1,8:15)])
+viable.mu05.init1 <- map(rep.stats.init1$mu05, count.genomes.muplus)
+viable.mu05.init5 <- map(rep.stats.init5$mu05, count.genomes.muplus)
 
-final.mu0 <- map(results.mu0, function(x) x[dim(x)[1],])
-final.mu0.total <- map_dbl(final.mu0, function(x) sum(x[,-1]))
-final.mu01 <- map(results.mu01, function(x) x[dim(x)[1],])
-final.mu01.total <- map_dbl(final.mu01, function(x) sum(x[,-1]))
-final.mu05 <- map(results.mu05, function(x) x[dim(x)[1],])
-final.mu05.total <- map_dbl(final.mu05, function(x) sum(x[,-1]))
-final.mu09 <- map(results.mu09, function(x) x[dim(x)[1],])
-final.mu09.total <- map_dbl(final.mu09, function(x) sum(x[,-1]))
-final.mu1 <- map(results.mu1, function(x) x[dim(x)[1],])
-final.mu1.total <- map_dbl(final.mu1, function(x) sum(x[,-1]))
+viable.mu09.init1 <- map(rep.stats.init1$mu09, count.genomes.muplus)
+viable.mu09.init5 <- map(rep.stats.init5$mu09, count.genomes.muplus)
 
-final.sums <- bind_cols("mu0"=final.mu0.total,"mu01"=final.mu01.total,"mu05"=final.mu05.total,
-                      "mu09"=final.mu09.total, "mu1"=final.mu1.total)
+viable.mu1.init1 <- map(rep.stats.init1$mu1, count.genomes.muplus)
+viable.mu1.init5 <- map(rep.stats.init5$mu1, count.genomes.muplus)
 
-final.sums.gather <- gather(final.sums, key = "mu", value = "N")
+viable.init1.list <- list("mu0" = viable.mu0.init1, "mu01" = viable.mu01.init1, 
+                          "mu05" = viable.mu05.init1,"mu09" = viable.mu09.init1,
+                          "mu1" = viable.mu1.init1)
+viable.init5.list <- list("mu0" = viable.mu0.init5, "mu01" = viable.mu01.init5, 
+                          "mu05" = viable.mu05.init5,"mu09" = viable.mu09.init5,
+                          "mu1" = viable.mu1.init5)
 
-mu.cols <- c("black", RColorBrewer::brewer.pal(9,"YlOrRd")[c(3,5,7,9)])
-ggplot(final.sums.gather, aes(x = N, fill = mu))+
-  geom_histogram(bins = 60)+
-  scale_fill_manual(values = mu.cols)+
-  ylab("Count")+
-  ggtitle("Total population size at t = 10")+
-  theme_bw()
-ggsave("runs/run_080224/figs/pop_hist.png")
+viable.lists <- list("init1" = viable.init1.list, "init5" = viable.init5.list)
 
-
-#calculate fitnesses
-load("runs/run_080224/gen_list.RData")
-load("runs/run_080224/combo.RData")
-#define fitness weighting vector
-#choose between:
-#c(0.3333333, 0.3333333, 0.3333333) [A = B = C]
-#c(0.476, 0.476, 0.0476) [AB > C]
-#c(0.0833, 0.0833, 0.833) [C > AB]
-fit.vec <- c(0.3333333, 0.3333333, 0.3333333)
-fit.calc <- function(geno){
-  combo.mat <- as.data.frame(matrix(data = NA, ncol = 3, nrow = 8))
-  colnames(combo.mat) <- c("A","B","C")
-  combo.mat[1,] <- c(geno[1,1],geno[2,1],geno[3,1])
-  combo.mat[2,] <- c(geno[1,1],geno[2,1],geno[3,2])
-  combo.mat[3,] <- c(geno[1,1],geno[2,2],geno[3,1])
-  combo.mat[4,] <- c(geno[1,1],geno[2,2],geno[3,2])
-  combo.mat[5,] <- c(geno[1,2],geno[2,1],geno[3,1])
-  combo.mat[6,] <- c(geno[1,2],geno[2,1],geno[3,2])
-  combo.mat[7,] <- c(geno[1,2],geno[2,2],geno[3,1])
-  combo.mat[8,] <- c(geno[1,2],geno[2,2],geno[3,2])
-  combo.mat <- mutate(combo.mat, "id" = combo, .before = A)
+build.viable.tables <- function(viables){
+  viable.abc <- map(viables, function(x) x$abc)
+  viable.abc <- bind_rows(map(viable.abc, unlist))
+  viable.abc.gather <- gather(viable.abc, key = "mu", value = "count")
   
-  w <- list()
-  for(i in seq_along(combo.mat$id)){
-    w[[i]] <- sum((fit.vec[1]) * ((combo.mat[i,]$A) * (1-abs(combo.mat[i,]$A - combo.mat[i,]$B))),
-                  (fit.vec[2]) * ((combo.mat[i,]$B) * (1-abs(combo.mat[i,]$B - combo.mat[i,]$A))),
-                  (fit.vec[3]) * (combo.mat[i,]$C))
-  }
-  w <- unlist(w)
-  combo.mat <- mutate(combo.mat, "w" = w)
-  combo.mat <- as.data.frame(t(combo.mat))
-  colnames(combo.mat) <- combo
-  combo.mat <- combo.mat[-c(1:4),]
-  return(combo.mat)
+  viable.ab <- map(viables, function(x) x$ab)
+  viable.ab <- bind_rows(map(viable.ab, unlist))
+  viable.ab.gather <- gather(viable.ab, key = "mu", value = "count")
+  
+  viable.c <- map(viables, function(x) x$c)
+  viable.c <- bind_rows(map(viable.c, unlist))
+  viable.c.gather <- gather(viable.c, key = "mu", value = "count")
+  
+  viable.tables <- list("abc" = viable.abc.gather, "ab" = viable.ab.gather,
+                        "c" = viable.c.gather)
+  return(viable.tables)
+  
 }
 
-all.w <- map(gen.list,fit.calc)
+viable.tables <- map(viable.lists, build.viable.tables)
 
-fit.mu0 <- map2(all.w,final.mu0, function(x,y) rbind(x,y[,-1]))
-fit.mu01 <- map2(all.w,final.mu01, function(x,y) rbind(x,y[,-1]))
-fit.mu05 <- map2(all.w,final.mu05, function(x,y) rbind(x,y[,-1]))
-fit.mu09 <- map2(all.w,final.mu09, function(x,y) rbind(x,y[,-1]))
-fit.mu1 <- map2(all.w,final.mu1, function(x,y) rbind(x,y[,-1]))
-
-weight.mean <- function(fit){
-  a <- list()
-  for(i in seq_along(fit[1,])){
-    a[[i]] <- sum(as.numeric(fit[1,i]) * as.numeric(fit[2,i]))
-    b <- sum(unlist(a))
-    c <- b/sum(as.numeric(fit[2,]))
-  }
-  return(c)
+viable.plots.init1 <- list()
+for(i in seq_along(viable.tables$init1)){
+  titles <- c("A = B = C", "AB > C", "C > AB")
+  viable.plots.init1[[i]] <- 
+    ggplot(data = viable.tables$init1[[i]], aes(x = count, fill = mu))+
+    geom_density(alpha = 0.6)+
+    xlab("Viable genomes")+
+    ylab("Density")+
+    ggtitle(titles[[i]])+
+    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+    theme_bw()+
+    theme(axis.text = element_text(size = 19),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 22),
+          legend.text = element_text(size = 19),
+          legend.title = element_text(size = 22))
+  filenames <- paste0("runs/run_091024/figs/",
+                      c("viable_genomes_abc_init1.png", "viable_genomes_ab_init1.png",
+                        "viable_genomes_c_init1.png"))
+  ggsave(filenames[[i]])
 }
-means.mu0 <- map_dbl(fit.mu0,weight.mean)
-means.mu01 <- map_dbl(fit.mu01,weight.mean)
-means.mu05 <- map_dbl(fit.mu05,weight.mean)
-means.mu09 <- map_dbl(fit.mu09,weight.mean)
-means.mu1 <- map_dbl(fit.mu1,weight.mean)
 
-all.means <- bind_cols("mu0" = means.mu0, "mu01" = means.mu01, "mu05" = means.mu05,
-                       "mu09" = means.mu09,"mu1" = means.mu1)
-means.gather <- gather(all.means, value = "mean", key = "mu")
+viable.plots.init5 <- list()
+for(i in seq_along(viable.tables$init5)){
+  titles <- c("A = B = C", "AB > C", "C > AB")
+  viable.plots.init5[[i]] <- 
+    ggplot(data = viable.tables$init5[[i]], aes(x = count, fill = mu))+
+    geom_density(alpha = 0.6)+
+    xlab("Viable genomes")+
+    ylab("Density")+
+    ggtitle(titles[[i]])+
+    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+    theme_bw()+
+    theme(axis.text = element_text(size = 19),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 22),
+          legend.text = element_text(size = 19),
+          legend.title = element_text(size = 22))
+  filenames <- paste0("runs/run_091024/figs/",
+                      c("viable_genomes_abc_init5.png", "viable_genomes_ab_init5.png",
+                      "viable_genomes_c_init5.png"))
+  ggsave(filenames[[i]])
+}
 
-ggplot(means.gather, aes(x = mean, color = mu))+
-  #geom_histogram(bins = 50)+
-  geom_density()+
-  scale_color_manual(values = mu.cols)+
-  xlab("Fitness")+
-  ylab("Count")+
-  ggtitle("Weighted mean of fitness at t = 10")+
-  theme_bw()
-ggsave("runs/run_080224/figs/w_density.png")
+#packaging fitness stats
+load("runs/run_091024/pack_stats_init1.RData")
+load("runs/run_091024/pack_stats_init5.RData")
 
+tab.final.genotypes <- function(packx){
+  final.genotypes <- list("abc" = NA, "ab" = NA, "c" = NA)
+  for(i in seq_along(packx)){
+    final.genotypes[[i]] <- map_dfr(packx[[i]], function(x) x[dim(x)[1],c(8:15)])
+  }
+  return(final.genotypes)
+}
 
+genotypes.init1 <- map(pack.stats.init1, tab.final.genotypes)
+genotypes.init5 <- map(pack.stats.init5, tab.final.genotypes)
+
+#calculate fitness for each genotype
+load("runs/run_091024/gen_lists.RData")
+load("runs/run_091024/combo.RData")
+calc.fitness <- function(gen){
+  fitness <- as.data.frame(matrix(ncol = 8, nrow = 1))
+  colnames(fitness) <- combo
+  fitness[1] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i1[2,2])),
+                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i1[1,2])), 
+                       gen$i1[3,1])) #A1B1C1
+  fitness[2] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i1[2,2])),
+                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i1[1,2])), 
+                       gen$i2[3,1])) #A1B1C2
+  fitness[3] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i2[2,2])),
+                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i1[1,2])), 
+                       gen$i1[3,1])) #A1B2C1
+  fitness[4] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i2[2,2])),
+                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i1[1,2])), 
+                       gen$i2[3,1])) #A1B2C2
+  fitness[5] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i1[2,2])),
+                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i2[1,2])), 
+                       gen$i1[3,1])) #A2B1C1
+  fitness[6] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i1[2,2])),
+                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i2[1,2])), 
+                       gen$i2[3,1])) #A2B1C2
+  fitness[7] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i2[2,2])),
+                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i2[1,2])), 
+                       gen$i1[3,1])) #A2B2C1
+  fitness[8] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i2[2,2])),
+                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i2[1,2])), 
+                       gen$i2[3,1])) #A2B2C2
+  return(fitness)
+}
+
+genotype.fitness <- list("abc" = NA, "ab" = NA, "c" = NA)
+for(i in seq_along(gen.lists)){
+  genotype.fitness[[i]] <- map_dfr(gen.lists[[i]], calc.fitness)
+}
+
+counts <- genotypes.init1$mu0$abc
+fit <- genotype.fitness$abc
+
+calc.weighted.fitness <- function(fit, counts){
+  weighted.fit <- list()
+  for(i in seq_along(rownames(fit))){
+    weighted.fit[[i]] <- weighted.mean(fit[i,], counts[i,])
+  }
+  weighted.fit <- unlist(weighted.fit)
+  return(weighted.fit)
+}
+
+weighted.fitness.init1 <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
+for(i in seq_along(genotypes.init1)){
+  weighted.fitness.init1[[i]] <- map2(genotypes.init1[[i]], genotype.fitness, calc.weighted.fitness)
+}
+
+weighted.fitness.init5 <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
+for(i in seq_along(genotypes.init5)){
+  weighted.fitness.init5[[i]] <- map2(genotypes.init5[[i]], genotype.fitness, calc.weighted.fitness)
+}
 
