@@ -1,10 +1,15 @@
 library(tidyverse)
 
 #load replication statistics
-load("runs/run_091024/rep_stats_init1.RData")
-load("runs/run_091024/rep_stats_init5.RData")
+load("runs/run_100124/rdata/rep_stats_init1_punc.RData")
+load("runs/run_100124/rdata/rep_stats_init5_punc.RData")
+load("runs/run_100124/rdata/rep_stats_init1_diff.RData")
+load("runs/run_100124/rdata/rep_stats_init5_diff.RData")
 
-#final viable genome counts
+rep.list <- list("init1_punc" = rep.stats.init1.punc, "init5_punc" = rep.stats.init5.punc,
+                 "init1_diff" = rep.stats.init1.diff, "init5_diff" = rep.stats.init5.diff)
+
+#calculate total viable genomes post-replication
 count.genomes.mu0 <- function(repx){
   counts <- list()
   viable <- list()
@@ -15,9 +20,6 @@ count.genomes.mu0 <- function(repx){
   }
   return(viable)
 }
-
-viable.mu0.init1 <- map(rep.stats.init1$mu0, count.genomes.mu0)
-viable.mu0.init5 <- map(rep.stats.init5$mu0, count.genomes.mu0)
 
 count.genomes.muplus <- function(repx){
   counts <- list()
@@ -31,26 +33,19 @@ count.genomes.muplus <- function(repx){
   return(viable)
 }
 
-viable.mu01.init1 <- map(rep.stats.init1$mu01, count.genomes.muplus)
-viable.mu01.init5 <- map(rep.stats.init5$mu01, count.genomes.muplus)
+tab.viables <- function(repz){
+  viable.mu0 <- map(repz$mu0, count.genomes.mu0)
+  viable.mu01 <- map(repz$mu01, count.genomes.muplus)
+  viable.mu05 <- map(repz$mu05, count.genomes.muplus)
+  viable.mu09 <- map(repz$mu09, count.genomes.muplus)
+  viable.mu1 <- map(repz$mu1, count.genomes.muplus)
+  
+  viable.list <- list("mu0"= viable.mu0, "mu01" = viable.mu01, "mu05" = viable.mu05,
+                      "mu09" = viable.mu09, "mu1" = viable.mu1)
+  return(viable.list)
+}
 
-viable.mu05.init1 <- map(rep.stats.init1$mu05, count.genomes.muplus)
-viable.mu05.init5 <- map(rep.stats.init5$mu05, count.genomes.muplus)
-
-viable.mu09.init1 <- map(rep.stats.init1$mu09, count.genomes.muplus)
-viable.mu09.init5 <- map(rep.stats.init5$mu09, count.genomes.muplus)
-
-viable.mu1.init1 <- map(rep.stats.init1$mu1, count.genomes.muplus)
-viable.mu1.init5 <- map(rep.stats.init5$mu1, count.genomes.muplus)
-
-viable.init1.list <- list("mu0" = viable.mu0.init1, "mu01" = viable.mu01.init1, 
-                          "mu05" = viable.mu05.init1,"mu09" = viable.mu09.init1,
-                          "mu1" = viable.mu1.init1)
-viable.init5.list <- list("mu0" = viable.mu0.init5, "mu01" = viable.mu01.init5, 
-                          "mu05" = viable.mu05.init5,"mu09" = viable.mu09.init5,
-                          "mu1" = viable.mu1.init5)
-
-viable.lists <- list("init1" = viable.init1.list, "init5" = viable.init5.list)
+viable.list <- map(rep.list, tab.viables)
 
 build.viable.tables <- function(viables){
   viable.abc <- map(viables, function(x) x$abc)
@@ -71,107 +66,181 @@ build.viable.tables <- function(viables){
   
 }
 
-viable.tables <- map(viable.lists, build.viable.tables)
+viable.tables <- map(viable.list, build.viable.tables)
+viables.punc <- list("init1" = viable.tables$init1_punc, "init5" = viable.tables$init5_punc)
+viables.diff <- list("init1" = viable.tables$init1_diff, "init5" = viable.tables$init5_diff)
 
-viable.plots.init1 <- list()
-for(i in seq_along(viable.tables$init1)){
-  titles <- c("A = B = C", "AB > C", "C > AB")
-  viable.plots.init1[[i]] <- 
-    ggplot(data = viable.tables$init1[[i]], aes(x = count, fill = mu))+
-    geom_density(alpha = 0.6)+
-    xlab("Viable genomes")+
-    ylab("Density")+
-    ggtitle(titles[[i]])+
-    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
-    theme_bw()+
-    theme(axis.text = element_text(size = 19),
-          axis.title = element_text(size = 22),
-          plot.title = element_text(size = 22),
-          legend.text = element_text(size = 19),
-          legend.title = element_text(size = 22))
-  filenames <- paste0("runs/run_091024/figs/",
-                      c("viable_genomes_abc_init1.png", "viable_genomes_ab_init1.png",
-                        "viable_genomes_c_init1.png"))
-  ggsave(filenames[[i]])
+#plot total viable genomes
+plot.viables.punc <- function(viable){
+  mu.cols <- c("black", RColorBrewer::brewer.pal(9,"YlOrRd")[c(3,5,7,9)])
+  viable.plots.init1 <- list()
+  viable.plots.init5 <- list()
+  for(i in seq_along(viable$init1)){
+    titles <- c("A = B = C, 1 founder", "AB > C, 1 founder", "C > AB, 1 founder")
+    viable.plots.init1[[i]] <- 
+      ggplot(data = viable$init1[[i]], aes(x = count, fill = mu))+
+      geom_density(alpha = 0.6)+
+      xlab("Viable genomes")+
+      ylab("Density")+
+      ggtitle(titles[[i]])+
+      scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+      theme_bw()+
+      theme(axis.text = element_text(size = 19),
+            axis.title = element_text(size = 22),
+            plot.title = element_text(size = 22),
+            legend.text = element_text(size = 19),
+            legend.title = element_text(size = 22))
+    filenames <- paste0("runs/run_100124/figs/viable_genomes/",
+                        c("viable_genomes_punc_init1_abc.png", "viable_genomes_punc_init1_ab.png",
+                          "viable_genomes_punc_init1_c.png"))
+    ggsave(filenames[[i]])
+  }
+  for(i in seq_along(viable$init5)){
+    titles <- c("A = B = C, 5 founders", "AB > C, 5 founders", "C > AB, 5 founders")
+    viable.plots.init1[[i]] <- 
+      ggplot(data = viable$init5[[i]], aes(x = count, fill = mu))+
+      geom_density(alpha = 0.6)+
+      xlab("Viable genomes")+
+      ylab("Density")+
+      ggtitle(titles[[i]])+
+      scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+      theme_bw()+
+      theme(axis.text = element_text(size = 19),
+            axis.title = element_text(size = 22),
+            plot.title = element_text(size = 22),
+            legend.text = element_text(size = 19),
+            legend.title = element_text(size = 22))
+    filenames <- paste0("runs/run_100124/figs/viable_genomes/",
+                        c("viable_genomes_punc_init5_abc.png", "viable_genomes_punc_init5_ab.png",
+                          "viable_genomes_punc_init5_c.png"))
+    ggsave(filenames[[i]])
+  }
 }
 
-viable.plots.init5 <- list()
-for(i in seq_along(viable.tables$init5)){
-  titles <- c("A = B = C", "AB > C", "C > AB")
-  viable.plots.init5[[i]] <- 
-    ggplot(data = viable.tables$init5[[i]], aes(x = count, fill = mu))+
-    geom_density(alpha = 0.6)+
-    xlab("Viable genomes")+
-    ylab("Density")+
-    ggtitle(titles[[i]])+
-    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
-    theme_bw()+
-    theme(axis.text = element_text(size = 19),
-          axis.title = element_text(size = 22),
-          plot.title = element_text(size = 22),
-          legend.text = element_text(size = 19),
-          legend.title = element_text(size = 22))
-  filenames <- paste0("runs/run_091024/figs/",
-                      c("viable_genomes_abc_init5.png", "viable_genomes_ab_init5.png",
-                      "viable_genomes_c_init5.png"))
-  ggsave(filenames[[i]])
+plot.viables.punc(viables.punc)
+
+plot.viables.diff <- function(viable){
+  mu.cols <- c("black", RColorBrewer::brewer.pal(9,"YlOrRd")[c(3,5,7,9)])
+  viable.plots.init1 <- list()
+  viable.plots.init5 <- list()
+  for(i in seq_along(viable$init1)){
+    titles <- c("A = B = C, 1 founder", "AB > C, 1 founder", "C > AB, 1 founder")
+    viable.plots.init1[[i]] <- 
+      ggplot(data = viable$init1[[i]], aes(x = count, fill = mu))+
+      geom_density(alpha = 0.6)+
+      xlab("Viable genomes")+
+      ylab("Density")+
+      ggtitle(titles[[i]])+
+      scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+      theme_bw()+
+      theme(axis.text = element_text(size = 19),
+            axis.title = element_text(size = 22),
+            plot.title = element_text(size = 22),
+            legend.text = element_text(size = 19),
+            legend.title = element_text(size = 22))
+    filenames <- paste0("runs/run_100124/figs/viable_genomes/",
+                        c("viable_genomes_diff_init1_abc.png", "viable_genomes_diff_init1_ab.png",
+                          "viable_genomes_diff_init1_c.png"))
+    ggsave(filenames[[i]])
+  }
+  for(i in seq_along(viable$init5)){
+    titles <- c("A = B = C, 5 founders", "AB > C, 5 founders", "C > AB, 5 founders")
+    viable.plots.init1[[i]] <- 
+      ggplot(data = viable$init5[[i]], aes(x = count, fill = mu))+
+      geom_density(alpha = 0.6)+
+      xlab("Viable genomes")+
+      ylab("Density")+
+      ggtitle(titles[[i]])+
+      scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+      theme_bw()+
+      theme(axis.text = element_text(size = 19),
+            axis.title = element_text(size = 22),
+            plot.title = element_text(size = 22),
+            legend.text = element_text(size = 19),
+            legend.title = element_text(size = 22))
+    filenames <- paste0("runs/run_100124/figs/viable_genomes/",
+                        c("viable_genomes_diff_init5_abc.png", "viable_genomes_diff_init5_ab.png",
+                          "viable_genomes_diff_init5_c.png"))
+    ggsave(filenames[[i]])
+  }
 }
+
+plot.viables.diff(viables.diff)
+
 
 #packaging fitness stats
-load("runs/run_091024/pack_stats_init1.RData")
-load("runs/run_091024/pack_stats_init5.RData")
+load("runs/run_100124/rdata/pack_stats_init1_punc.RData")
+load("runs/run_100124/rdata/pack_stats_init5_punc.RData")
+load("runs/run_100124/rdata/pack_stats_init1_diff.RData")
+load("runs/run_100124/rdata/pack_stats_init5_diff.RData")
+pack.list <- list("init1_punc" = pack.stats.init1.punc, "init5_punc" = pack.stats.init5.punc,
+                  "init1_diff" = pack.stats.init1.diff, "init5_diff" = pack.stats.init5.diff)
 
 tab.final.genotypes <- function(packx){
   final.genotypes <- list("abc" = NA, "ab" = NA, "c" = NA)
   for(i in seq_along(packx)){
-    final.genotypes[[i]] <- map_dfr(packx[[i]], function(x) x[dim(x)[1],c(8:15)])
+    final.genotypes[[i]] <- map_dfr(packx[[i]], function(x) tail(x,1)[,c(8:15)])
   }
   return(final.genotypes)
 }
 
-genotypes.init1 <- map(pack.stats.init1, tab.final.genotypes)
-genotypes.init5 <- map(pack.stats.init5, tab.final.genotypes)
+genotype.list <- list("init1_punc" = NA, "init5_punc" = NA,"init1_diff" = NA,
+                      "init5_diff" = NA)
+
+for(i in seq_along(pack.list)){
+  genotype.list[[i]] <- map(pack.list[[i]], tab.final.genotypes)
+}
 
 #calculate fitness for each genotype
-load("runs/run_091024/gen_lists.RData")
-load("runs/run_091024/combo.RData")
+load("runs/run_100124/rdata/gen_lists_punctuated.RData")
+load("runs/run_100124/rdata/gen_lists_diffuse.RData")
+load("runs/run_100124/rdata/combo.RData")
+
+fit.vecs <- list("abc" = c(0.333,0.333,0.333),
+                 "ab" = c(0.476,0.476,0.0476),
+                 "c" = c(0.0833,0.0833,0.833))
+
 calc.fitness <- function(gen){
   fitness <- as.data.frame(matrix(ncol = 8, nrow = 1))
   colnames(fitness) <- combo
-  fitness[1] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i1[2,2])),
-                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i1[1,2])), 
-                       gen$i1[3,1])) #A1B1C1
-  fitness[2] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i1[2,2])),
-                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i1[1,2])), 
-                       gen$i2[3,1])) #A1B1C2
-  fitness[3] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i2[2,2])),
-                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i1[1,2])), 
-                       gen$i1[3,1])) #A1B2C1
-  fitness[4] <- mean(c(gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i2[2,2])),
-                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i1[1,2])), 
-                       gen$i2[3,1])) #A1B2C2
-  fitness[5] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i1[2,2])),
-                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i2[1,2])), 
-                       gen$i1[3,1])) #A2B1C1
-  fitness[6] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i1[2,2])),
-                       gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i2[1,2])), 
-                       gen$i2[3,1])) #A2B1C2
-  fitness[7] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i2[2,2])),
-                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i2[1,2])), 
-                       gen$i1[3,1])) #A2B2C1
-  fitness[8] <- mean(c(gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i2[2,2])),
-                       gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i2[1,2])), 
-                       gen$i2[3,1])) #A2B2C2
+  fitness[1] <- sum(c((fit[1] * gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i1[2,2]))),
+                       (fit[2] * gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i1[1,2]))), 
+                       (fit[3] * gen$i1[3,1]))) #A1B1C1
+  fitness[2] <- sum(c((fit[1] * gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i1[2,2]))),
+                       (fit[2] * gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i1[1,2]))), 
+                       (fit[3] * gen$i2[3,1]))) #A1B1C2
+  fitness[3] <- sum(c((fit[1] * gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i2[2,2]))),
+                       (fit[2] * gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i1[1,2]))), 
+                       (fit[3] * gen$i1[3,1]))) #A1B2C1
+  fitness[4] <- sum(c((fit[1] * gen$i1[1,1] * (1 - abs(gen$i1[1,2] - gen$i2[2,2]))),
+                       (fit[2] * gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i1[1,2]))), 
+                       (fit[3] * gen$i2[3,1]))) #A1B2C2
+  fitness[5] <- sum(c((fit[1] * gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i1[2,2]))),
+                       (fit[2] * gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i2[1,2]))), 
+                       (fit[3] * gen$i1[3,1]))) #A2B1C1
+  fitness[6] <- mean(c((fit[1] * gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i1[2,2]))),
+                       (fit[2] * gen$i1[2,1] * (1 - abs(gen$i1[2,2] - gen$i2[1,2]))), 
+                       (fit[3] * gen$i2[3,1]))) #A2B1C2
+  fitness[7] <- sum(c((fit[1] * gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i2[2,2]))),
+                       (fit[2] * gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i2[1,2]))), 
+                       (fit[3] * gen$i1[3,1]))) #A2B2C1
+  fitness[8] <- sum(c((fit[1] * gen$i2[1,1] * (1 - abs(gen$i2[1,2] - gen$i2[2,2]))),
+                       (fit[2] * gen$i2[2,1] * (1 - abs(gen$i2[2,2] - gen$i2[1,2]))), 
+                       (fit[3] * gen$i2[3,1]))) #A2B2C2
   return(fitness)
 }
 
-genotype.fitness <- list("abc" = NA, "ab" = NA, "c" = NA)
-for(i in seq_along(gen.lists)){
-  genotype.fitness[[i]] <- map_dfr(gen.lists[[i]], calc.fitness)
+genotype.punc.fitness <- list("abc" = NA, "ab" = NA, "c" = NA)
+for(i in seq_along(gen.lists.punc)){
+  fit <- fit.vecs[[i]]
+  genotype.punc.fitness[[i]] <- map_dfr(gen.lists.punc[[i]], calc.fitness)
 }
 
-counts <- genotypes.init1$mu0$abc
-fit <- genotype.fitness$abc
+genotype.diff.fitness <- list("abc" = NA, "ab" = NA, "c" = NA)
+for(i in seq_along(gen.lists.diff)){
+  fit <- fit.vecs[[i]]
+  genotype.diff.fitness[[i]] <- map_dfr(gen.lists.diff[[i]], calc.fitness)
+}
 
 calc.weighted.fitness <- function(fit, counts){
   weighted.fit <- list()
@@ -182,13 +251,279 @@ calc.weighted.fitness <- function(fit, counts){
   return(weighted.fit)
 }
 
-weighted.fitness.init1 <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
-for(i in seq_along(genotypes.init1)){
-  weighted.fitness.init1[[i]] <- map2(genotypes.init1[[i]], genotype.fitness, calc.weighted.fitness)
+
+weighted.fitness.init1.punc <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
+for(i in seq_along(genotype.list$init1_punc)){
+  weighted.fitness.init1.punc[[i]] <- map2(genotype.punc.fitness, genotype.list$init1_punc[[i]], calc.weighted.fitness)
 }
 
-weighted.fitness.init5 <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
-for(i in seq_along(genotypes.init5)){
-  weighted.fitness.init5[[i]] <- map2(genotypes.init5[[i]], genotype.fitness, calc.weighted.fitness)
+weighted.fitness.init5.punc <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
+for(i in seq_along(genotype.list$init5_punc)){
+  weighted.fitness.init5.punc[[i]] <- map2(genotype.punc.fitness, genotype.list$init5_punc[[i]], calc.weighted.fitness)
 }
+
+weighted.fitness.init1.diff <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
+for(i in seq_along(genotype.list$init1_diff)){
+  weighted.fitness.init1.diff[[i]] <- map2(genotype.diff.fitness, genotype.list$init1_diff[[i]], calc.weighted.fitness)
+}
+
+weighted.fitness.init5.diff <- list("mu0" = NA, "mu01" = NA, "mu05" = NA, "mu09" = NA, "mu1" = NA)
+for(i in seq_along(genotype.list$init5_diff)){
+  weighted.fitness.init5.diff[[i]] <- map2(genotype.diff.fitness, genotype.list$init5_diff[[i]], calc.weighted.fitness)
+}
+
+weighted.fitness.list <- list("init1_punc" = weighted.fitness.init1.punc,
+                              "init5_punc" = weighted.fitness.init5.punc,
+                              "init1_diff" = weighted.fitness.init1.diff,
+                              "init5_diff" = weighted.fitness.init5.diff)
+
+build.fitness.tables <- function(weighted.fit){
+  fitness.abc <- map(weighted.fit, function(x) x$abc)
+  fitness.abc <- bind_rows(fitness.abc)
+  fitness.abc.gather <- gather(fitness.abc, key = "mu", value = "mean")
+  
+  fitness.ab <- map(weighted.fit, function(x) x$ab)
+  fitness.ab <- bind_rows(fitness.ab)
+  fitness.ab.gather <- gather(fitness.ab, key = "mu", value = "mean")
+  
+  fitness.c <- map(weighted.fit, function(x) x$c)
+  fitness.c <- bind_rows(fitness.c)
+  fitness.c.gather <- gather(fitness.c, key = "mu", value = "mean")
+  
+  fitness.tables <- list("abc" = fitness.abc.gather, "ab" = fitness.ab.gather,
+                         "c" = fitness.c.gather)
+  return(fitness.tables)
+}
+
+fitness.tables <- list("init1_punc" = NA, "init5_punc" = NA, "init1_diff" = NA,
+                       "init5_diff" = NA)
+fitness.tables <- map(weighted.fitness.list, build.fitness.tables)
+
+mu.cols <- c("black", RColorBrewer::brewer.pal(9,"YlOrRd")[c(3,5,7,9)])
+
+fitness.plots.init1.punc <- list()
+for(i in seq_along(fitness.tables$init1_punc)){
+  titles <- c("A = B = C", "AB > C", "C > AB")
+  fitness.plots.init1.punc[[i]] <- 
+    ggplot(data = fitness.tables$init1_punc[[i]], aes(x = mean, fill = mu))+
+    geom_density(alpha = 0.6)+
+    xlab("Mean population fitness")+
+    ylab("Density")+
+    ggtitle(titles[[i]])+
+    xlim(c(0.2,2))+
+    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+    theme_bw()+
+    theme(axis.text = element_text(size = 19),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 22),
+          legend.text = element_text(size = 19),
+          legend.title = element_text(size = 22))
+  filenames <- paste0("runs/run_100124/figs/genome_fitness/",
+                      c("fitness_abc_init1_punc.png", "fitness_ab_init1_punc.png",
+                        "fitness_c_init1_punc.png"))
+  ggsave(filenames[[i]])
+}
+
+fitness.plots.init5.punc <- list()
+for(i in seq_along(fitness.tables$init5_punc)){
+  titles <- c("A = B = C", "AB > C", "C > AB")
+  fitness.plots.init5.punc[[i]] <- 
+    ggplot(data = fitness.tables$init5_punc[[i]], aes(x = mean, fill = mu))+
+    geom_density(alpha = 0.6)+
+    xlab("Mean population fitness")+
+    ylab("Density")+
+    ggtitle(titles[[i]])+
+    xlim(c(0.2,2))+
+    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+    theme_bw()+
+    theme(axis.text = element_text(size = 19),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 22),
+          legend.text = element_text(size = 19),
+          legend.title = element_text(size = 22))
+  filenames <- paste0("runs/run_100124/figs/genome_fitness/",
+                      c("fitness_abc_init5_punc.png", "fitness_ab_init5_punc.png",
+                        "fitness_c_init5_punc.png"))
+  ggsave(filenames[[i]])
+}
+
+fitness.plots.init1.diff <- list()
+for(i in seq_along(fitness.tables$init1_diff)){
+  titles <- c("A = B = C", "AB > C", "C > AB")
+  fitness.plots.init1.diff[[i]] <- 
+    ggplot(data = fitness.tables$init1_diff[[i]], aes(x = mean, fill = mu))+
+    geom_density(alpha = 0.6)+
+    xlab("Mean population fitness")+
+    ylab("Density")+
+    ggtitle(titles[[i]])+
+    xlim(c(0.2,2))+
+    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+    theme_bw()+
+    theme(axis.text = element_text(size = 19),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 22),
+          legend.text = element_text(size = 19),
+          legend.title = element_text(size = 22))
+  filenames <- paste0("runs/run_100124/figs/genome_fitness/",
+                      c("fitness_abc_init1_diff.png", "fitness_ab_init1_diff.png",
+                        "fitness_c_init1_diff.png"))
+  ggsave(filenames[[i]])
+}
+
+fitness.plots.init5.diff <- list()
+for(i in seq_along(fitness.tables$init5_diff)){
+  titles <- c("A = B = C", "AB > C", "C > AB")
+  fitness.plots.init5.diff[[i]] <- 
+    ggplot(data = fitness.tables$init5_diff[[i]], aes(x = mean, fill = mu))+
+    geom_density(alpha = 0.6)+
+    xlab("Mean population fitness")+
+    ylab("Density")+
+    ggtitle(titles[[i]])+
+    xlim(c(0.2,2))+
+    scale_fill_manual(values = mu.cols, labels = c(0, 0.1, 0.5, 0.9, 1))+
+    theme_bw()+
+    theme(axis.text = element_text(size = 19),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 22),
+          legend.text = element_text(size = 19),
+          legend.title = element_text(size = 22))
+  filenames <- paste0("runs/run_100124/figs/genome_fitness/",
+                      c("fitness_abc_init5_diff.png", "fitness_ab_init5_diff.png",
+                        "fitness_c_init5_diff.png"))
+  ggsave(filenames[[i]])
+}
+
+
+
+
+
+#ahhhh ahhhh ahhhhh help
+#per run mu1 - mu0
+diff.abc.init1 <- (weighted.fitness.init1$mu1$abc) - (weighted.fitness.init1$mu0$abc)
+diff.ab.init1 <- (weighted.fitness.init1$mu1$ab) - (weighted.fitness.init1$mu0$ab)
+diff.c.init1 <- (weighted.fitness.init1$mu1$c) - (weighted.fitness.init1$mu0$c)
+diffs.init1 <- as.data.frame(cbind("A = B = C" = diff.abc.init1, "AB > C" = diff.ab.init1, "C > AB" = diff.c.init1))
+diffs.init1.gather <- gather(diffs.init1, value = "diff", key = "scheme")
+
+diff.abc.init5 <- (weighted.fitness.init5$mu1$abc) - (weighted.fitness.init5$mu0$abc)
+diff.ab.init5 <- (weighted.fitness.init5$mu1$ab) - (weighted.fitness.init5$mu0$ab)
+diff.c.init5 <- (weighted.fitness.init5$mu1$c) - (weighted.fitness.init5$mu0$c)
+diffs.init5 <- as.data.frame(cbind("A = B = C" = diff.abc.init5, "AB > C" = diff.ab.init5, "C > AB" = diff.c.init5))
+diffs.init5.gather <- gather(diffs.init5, value = "diff", key = "scheme")
+
+ggplot(data = diffs.init1.gather, aes(x = scheme, y = diff))+
+  geom_point(cex = 4, alpha = 0.2)+
+  ylim(c(-0.5, 0.5))+
+  xlab("Scheme")+
+  ylab("Fitness difference between \n mu = 1 and mu = 0")+
+  ggtitle("1 initializing genome")+
+  theme_bw()+
+  theme(axis.text = element_text(size = 19),
+        axis.title = element_text(size = 22),
+        plot.title = element_text(size = 22))
+ggsave("runs/run_091024/figs/fit_diff_init1.png")
+
+
+ggplot(data = diffs.init5.gather, aes(x = scheme, y = diff))+
+  geom_point(cex = 4, alpha = 0.2)+
+  ylim(c(-0.5, 0.5))+
+  xlab("Scheme")+
+  ylab("Fitness difference between \n mu = 1 and mu = 0")+
+  ggtitle("5 initializing genomes")+
+  theme_bw()+
+  theme(axis.text = element_text(size = 19),
+        axis.title = element_text(size = 22),
+        plot.title = element_text(size = 22))
+ggsave("runs/run_091024/figs/fit_diff_init5.png") 
+
+#stats
+kruskal.test(diff ~ scheme, diffs.init5.gather) #p-value = 0.00544
+dunn.test::dunn.test(diffs.init5.gather$diff, diffs.init5.gather$scheme, 
+                     method = "bonferroni")
+
+#change in per-genotype gene contribution between parental generation and offspring
+price.check <- function(offspring.count, gen.fit){
+  offspring.freq <- as.data.frame(t(offspring.count/(sum(offspring.count))))
+  colnames(offspring.freq) <- "freq"
+  offspring.tab <- mutate(offspring.freq,
+                          "parent1.id" = c(1,0.67,0.67,0.33,0.67,0.33,0.33,0),
+                          "parent2.id" = c(0, 0.33,0.33,0.67,0.33,0.67,0.67,1))
+  offspring.tab <- mutate(offspring.tab,
+                          "freqxid.1" = freq * parent1.id,
+                          "freqxid.2" = freq * parent2.id)
+  
+  offspring.fx <- colSums(offspring.tab)[c(4,5)] - 0.5
+  names(offspring.fx) <- c("parent1", "parent2")
+  parent.diff <- c("parent1" = unname(gen.fit[1] - gen.fit[8]),
+                   "parent2" = unname(gen.fit[8] - gen.fit[1]))
+  
+  price.mat <- as.data.frame(bind_rows(offspring.fx, parent.diff))
+  rownames(price.mat) <- c("offspring_fx","parental_diff")
+  return(price.mat)
+}
+
+price.table <- function(offspring.count, gen.fit){
+  comp <- list()
+  for(i in seq_along(rownames(offspring.count))){
+    comp[[i]] <- price.check(offspring.count[i,], gen.fit[i,])
+  }
+  comp <- map(comp, function(x) t(x)[1,])
+  comp <- bind_rows(comp)
+  comp <- mutate(comp,"type" = "mismatch")
+  for(i in seq_along(comp$offspring_fx)){
+    if((comp$offspring_fx[[i]] < 0) && (comp$parental_diff[[i]] < 0)){
+      comp$type[[i]] <- "match"
+    }
+    if((comp$offspring_fx[[i]] >= 0) && (comp$parental_diff[[i]] >= 0)){
+      comp$type[[i]] <- "match"
+    }
+  }
+  return(comp)
+}
+
+abc.prices <- list("mu0" = price.table(genotypes.init5$mu0$abc, genotype.fitness$abc),
+                   "mu1" = price.table(genotypes.init5$mu1$abc, genotype.fitness$abc))
+ab.prices <- list("mu0" = price.table(genotypes.init5$mu0$ab, genotype.fitness$ab),
+                  "mu1" = price.table(genotypes.init5$mu1$ab, genotype.fitness$ab))
+c.prices <- list("mu0" = price.table(genotypes.init5$mu0$c, genotype.fitness$c),
+                 "mu1" = price.table(genotypes.init5$mu1$c, genotype.fitness$c))
+
+plot.prices <- function(prices){
+  titles <- c("mu = 0", "mu = 1")
+  price.plots <- list()
+  cor.list <- list()
+  lm.list <- list()
+  for(i in seq_along(prices)){
+    cor.list[[i]] <- (cor.test(prices[[i]]$parental_diff, prices[[i]]$offspring_fx))$estimate
+    lm.list[[i]] <- (lm(prices[[i]]$offspring_fx ~ prices[[i]]$parental_diff))$coefficients
+    price.plots[[i]] <- ggplot(data = prices[[i]], 
+                               aes(x = parental_diff, y = offspring_fx, color = type))+
+      geom_point(cex = 3)+
+      geom_abline(intercept = lm.list[[i]][1], slope = lm.list[[i]][2])+
+      xlim(c(-0.5,0.5))+
+      ylim(c(-0.5,0.5))+
+      xlab("Fitness(genotype i) - fitness(genotype j)")+
+      ylab("∆ Population frequency of i")+
+      ggtitle(paste(titles[[i]], ", r =",round(cor.list[[i]], 2)))+
+      scale_color_manual(values = c("black","red"))+
+      theme_bw()+
+      theme(axis.title = element_text(size = 22),
+            axis.text = element_text(size = 19),
+            plot.title = element_text(size = 22),
+            legend.position = "none")
+    
+  }
+  return(price.plots)
+}
+
+abc.price.plots <- plot.prices(abc.prices)
+abc.price.plots[[2]]
+ggsave("runs/run_091024/figs/abc_price_mu1.png")
+ab.price.plots <- plot.prices(ab.prices)
+ab.price.plots[[2]]
+ggsave("runs/run_091024/figs/ab_price_mu1.png")
+c.price.plots <- plot.prices(c.prices)
+c.price.plots[[2]]
+ggsave("runs/run_091024/figs/c_price_mu1.png")
+
 
